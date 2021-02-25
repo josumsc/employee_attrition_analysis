@@ -1,0 +1,371 @@
+---
+title: 'Employee Attrition - Causes and Explanations'
+author: "Josu Alonso"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    number_sections: yes
+    theme: cosmo
+    toc: yes
+    toc_depth: 2
+    includes:
+      in_header: header.html
+  pdf_document:
+    highlight: zenburn
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(eval=T, echo=T)
+```
+
+#  Explanation of the dataset
+
+## Motivation
+
+As I introduced in the README, I found concerning the fact of some workers leaving a company for several reasons: The future absence of a key player of the company, a non-amortised investment in personnel training, ... So I decided to look into several dataset repositories in order to find a dataset that would fit my needs of analysing this phenomenon. I arrived at [this dataset at Kaggle](https://www.kaggle.com/patelprashant/employee-attrition?select=WA_Fn-UseC_-HR-Employee-Attrition.csv) and I think it matches and fulfills my needs, as it has both categorical and numerical data to examine and addresses this exact same topic.
+
+
+## Variables
+
+The variables that make part of this dataset are the following:
+
+* **Age**, worker's age.
+
+* **Attrition**, target variable, it indicates if the worker is willing to abandon his/her company.
+
+* **BusinessTravel**, how often a worker travels due to work reasons.
+
+* **DailyRate**, daily rate of the employee.
+
+* **Department**, current department of the employee.
+
+* **DistanceFromHome**, distance (in miles) between the worker's home and workplace.
+
+* **Education**, level of studies of the employee.
+
+* **EducationField**, choice of study of the employee.
+
+* **EmployeeCount**, constant 1.
+
+* **EmployeeNumber**, primary key of the observation.
+
+* **EnvironmentSatisfaction**, ordinal variable from 1 to 4 for Employee Satisfaction.
+
+* **Gender**, binary gender of the employee.
+
+* **HourlyRate**, hourly rate.
+
+* **JobInvolvement**, ordinal variable from 1 to 4 for employee involvement.
+
+* **JobLevel**, ordinal variable from 1 to 4 for employee performance.
+
+* **JobRole**, employee role at the company.
+
+* **MaritalStatus**, marital status of the employee.
+
+* **MonthlyIncome**, monthly income of the employee.
+
+* **MonthlyRate**, monthly rate of the employee.
+
+* **NumCompaniesWorked**, how many companies the employee has worked for.
+
+* **Over18**, constant 1.
+
+* **OverTime**, boolean to check if the employee does overtime.
+
+* **PercentSalaryHike**, salary rise since started working for the company.
+
+* **PerformanceRating**, ordinal variable from 1 to 4 with the perceived performance of the employee.
+
+* **RelationshipSatisfaction**, ordinal variable from 1 to 4 for the satisfaction of the employee with his/her company.
+
+* **StandardHours**,  constant 80.
+
+* **StockOptionLevel**, ordinal variable from 1 to 4 with the easeness to acquire stock of the company.
+
+* **TotalWorkingYears**, employee number of years worked through his/her life.
+
+* **WorkLifeBalance**, ordinal variable from 1 to 4 with the level of work/life balance of the employee.
+
+* **YearsAtCompany**, employee number of years worked at the company.
+
+* **YearsInCurrentRole**, employee number of years worked at his/her current role.
+
+* **YearsSinceLastPromotion**, employee number of years worked since last promotion.
+
+* **YearsWithCurrManager**, employee number of years worked with the same manager.
+
+
+# Data Loading
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Library loading
+if(!require(dplyr)){
+    install.packages('dplyr', dependencies=c("Depends", "Imports"), repos='http://cran.es.r-project.org')
+    require(dplyr)
+}
+if(!require(ggplot2)){
+    install.packages('ggplot2', dependencies=c("Depends", "Imports"), repos='http://cran.es.r-project.org')
+    require(ggplot2)
+}
+if(!require(reshape2)){
+    install.packages('reshape2', dependencies=c("Depends", "Imports"), repos='http://cran.es.r-project.org')
+    require(reshape2)
+}
+if(!require(grid)){
+    install.packages('grid', dependencies=c("Depends", "Imports"), repos='http://cran.es.r-project.org')
+    require(grid)
+}
+if(!require(gridExtra)){
+    install.packages('gridExtra', dependencies=c("Depends", "Imports"), repos='http://cran.es.r-project.org')
+    require(gridExtra)
+}
+if(!require(plotly)){
+    install.packages('plotly', dependencies=c("Depends", "Imports"), repos='http://cran.es.r-project.org')
+    require(plotly)
+}
+if(!require(caTools)){
+    install.packages('caTools', dependencies=c("Depends", "Imports"), repos='http://cran.es.r-project.org')
+    require(caTools)
+}
+if(!require(caret)){
+    install.packages('caret', dependencies=c("Depends", "Imports"), repos='http://cran.es.r-project.org')
+    require(caret)
+}
+
+
+# Indicates the seed to replicate results
+set.seed(1234)
+
+# Dataset loading
+dataset <- read.csv('../data/WA_Fn-UseC_-HR-Employee-Attrition.csv')
+
+# Dropping the columns without value for our analysis
+col_drops <- c('EmployeeCount', 'EmployeeNumber', 'Over18', 'StandardHours')
+
+for (column in col_drops){
+  dataset[,column] <- NULL
+}
+
+# Conversion of strings to Factors in categorical columns
+factores <- c("Attrition",
+              "BusinessTravel",
+              "Department",
+              "EducationField",
+              "Gender",
+              "JobRole",
+              "MaritalStatus",
+              "OverTime")
+
+for(f in factores){
+  dataset[, f] <- as.factor(dataset[, f])
+}
+```
+
+
+# Exploratory Data Analysis
+
+First of all, we check if the dataset has null values on it:
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+sprintf("Number of NULL values in the dataset: %i", sum(is.na(dataset)))
+sprintf("Number of ' ' values in the dataset: %i", sum(dataset == ' '))
+sprintf("Number of '?' values in the dataset: %i", sum(dataset == '?'))
+sprintf("Number of '' values in the dataset: %i", sum(dataset == ''))
+```
+
+And as we can see, no null values are detected on this dataset, which makes us believe that data completition in this dataset would be high or total if no future problems are detected on it.
+
+In order to have a solid ground to start our analysis, we describe the values and data types of the columns of the set:
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+str(dataset)
+summary(dataset)
+```
+
+And we can combine the summary table with the representation of the histogram of the continuos variables, in order to easier detect outliers and perceive the distribution of the different characteristics.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+melt.dataset <- melt(dataset)
+
+ggplot(data = melt.dataset, aes(x = value)) + 
+  stat_density() + 
+  facet_wrap(~variable, scales = "free")
+
+```
+
+We observe that the dataset is skewed to the left part of the histograms, which makes sense as most of the workers receive the less benefits inside organizations. At the same time, we can clearly see that most workers live more or less near their workplaces to achieve the most convenience.
+On the other hand, there are more or less constant variables (such as `Rate`) and some that follow a normal distribution (as `Age`, which is normal in a various range of datasets).
+
+
+## Categorical Variables
+
+With the summary of the dataset on mind, we can now check the distribution of our target variable accross different factors. I selected three of them as interesting due to their importance in our quotidian lives:
+
+1. Gender
+2. OverTime
+3. Marital Status
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+grid.newpage()
+
+plotbyGender <- ggplot(dataset,aes(Gender,fill=Attrition))+geom_bar() +labs(x="Gender", y="Employees")+ guides(fill=guide_legend(title=""))+ scale_fill_manual(values=c("black","#008000"))+ggtitle("By Gender")
+plotbyOverTime <- ggplot(dataset,aes(OverTime,fill=Attrition))+geom_bar() +labs(x="OverTime", y="Employees")+ guides(fill=guide_legend(title=""))+ scale_fill_manual(values=c("black","#008000"))+ggtitle("By OverTime")
+plotbyMaritalStatus <- ggplot(dataset,aes(MaritalStatus,fill=Attrition))+geom_bar() +labs(x="MaritalStatus", y="Employees")+ guides(fill=guide_legend(title=""))+ scale_fill_manual(values=c("black","#008000"))+ggtitle("By MaritalStatus")+theme(axis.text.x = element_text(angle=45))
+
+grid.arrange(plotbyGender,plotbyOverTime,plotbyMaritalStatus,ncol=3)
+```
+
+And, more generally, we will also check the value of the columns with a considerable number of factors to see if they are relevant enough to be considered in our modelling. The columns in this case are:
+
+1. EducationField
+2. JobRole
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+qplot <- ggplot(dataset, aes(fill=EducationField, x=Attrition)) + 
+  geom_bar(position="fill") + 
+  ggtitle("EducationField by Attrition in %")
+ggplotly(qplot)
+```
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+qplot <- ggplot(dataset, aes(fill=JobRole, x=Attrition)) + 
+  geom_bar(position="fill") + 
+  ggtitle("JobRole by Attrition in %")
+ggplotly(qplot)
+```
+
+We saw differences in proportion for **Marketing** and **Technical Degrees** as `EducationField`, as these fields are more representative in employees with attrition, and **Medical**, on the contrary as it is more represented on employeed not considering a career change. 
+
+Regarding `JobRole`, **Sales Representative** and **Laboratory Technician** employees tend to be more attire for a change in their job posts, and on the contrary **Manager** and **Manufacturing Director** are more representative on the negative value of the target value.
+
+## Continuos Variables 
+
+And now would be the time to do the same, this time using a continuous variable. In this case, I have chosen `Age` as dimension to pivot by in order to get a clear idea of attrition through this variable.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+qplot <- ggplot(dataset, aes(x = Age)) +
+            geom_density(binwidth = 10,
+                           aes(y = ..density..,
+                               fill = Attrition),
+                           position = "dodge", alpha = 0.5) + 
+            ggtitle("Age Density per Attrition")
+ggplotly(qplot)
+```
+
+We observe that people inclined towards attrition has a distribution more inclined in younger ages, highlighting its mode on 30-31 years and much lower distributions for older people than 40. People not thinking about changing job posts tend to be older and with a much more distributed age, close to the normal distribution (though with a wider cue on older ages). On the other hand, as it seems obvious, we could check the density of `MonthlyIncome` differentiating by Attrition too:
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+qplot <- ggplot(dataset, aes(x = MonthlyIncome)) +
+            geom_density(binwidth = 10,
+                           aes(y = ..density..,
+                               fill = Attrition),
+                           position = "dodge", alpha = 0.5) + 
+            ggtitle("Monthly Income Density per Attrition")
+ggplotly(qplot)
+```
+
+And here we can check that density of salaries of workers thinking about quitting is much skewed towards lower salaries, with a very noticeable peak around \$2500 per month. Although people without attrition has also salaries concentrated around \$2500-6000, it is by far not as clear and corresponds to the natural distribution on Income in developed countries. 
+
+
+# Data Preparation
+
+We need to prepare our data specifically to perform our modelling as efficiently as possible:
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Copying our dataset for changes to modelling
+dataset_model <- dataset
+
+# Converting binary columns to INT
+dataset_model$Attrition <- ifelse(dataset_model$Attrition == 'Yes', 1, 0)
+dataset_model$Gender <- ifelse(dataset_model$Gender == 'Male', 1, 0)
+dataset_model$OverTime <- ifelse(dataset_model$OverTime == 'Yes', 1, 0)
+
+# Creating variables on EducationField and JobRole leaving the relevant values as booleans
+dataset_model$MarketingTechnical <- ifelse(dataset_model$EducationField 
+                                           %in% c('Marketing', 'Technical Degree'), 1, 0)
+dataset_model$Medical <- ifelse(dataset_model$EducationField 
+                                %in% c('Medical'), 1, 0)
+dataset_model$LaboratorySales <- ifelse(dataset$JobRole 
+                                        %in% c('Laboratory Technician','Sales Representative'), 1, 0)
+dataset_model$Director <- ifelse(dataset$JobRole
+                                 %in% c('Manager', 'Manufacturing Director'), 1, 0)
+
+
+# Encoding rest of categorical columns
+dv <- caret::dummyVars(" ~ BusinessTravel + Department + MaritalStatus", data = dataset_model)
+new_columns <- data.frame(predict(dv, newdata = dataset_model))
+dataset_model <- cbind(dataset_model, new_columns)
+
+# Dropping categorical columns with categorical values
+dataset_model <- dataset_model[,c(-3, -5, -8,-14, -16)]
+
+# Scaling numerical columns
+numerical_columns <- c('Age',
+                       'DailyRate',
+                       'DistanceFromHome',
+                       'HourlyRate',
+                       'MonthlyIncome',
+                       'MonthlyRate',
+                       'PercentSalaryHike',
+                       'TotalWorkingYears',
+                       'YearsAtCompany',
+                       'YearsInCurrentRole',
+                       'YearsWithCurrManager')
+
+for (col in numerical_columns){
+  dataset_model[, col] <- scale(dataset_model[, col])
+}
+
+```
+
+# Modelling
+
+As we try to predict a categorical value with a binary output, we will focus our efforts in models specialized in this kind of task. From simpler to more complicated, we will perform a total of 5 different models:
+
+## Logistic Regression
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#TODO
+
+```
+
+
+## Decision Trees - C50
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#TODO
+
+```
+
+## Decision Trees - CART
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#TODO
+
+```
+
+## SVM Classifiers
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#TODO
+
+```
+
+## Random Forests
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#TODO
+
+```
+
+# Conclusions
+
+
+# Bibliography
+
+
+
