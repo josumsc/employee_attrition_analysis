@@ -7,11 +7,13 @@ To examine this fact, I will use the dataset Employee Attrition located at [Kagg
 ## File Structure
 
 * **data/**: Version of the dataset used in the analysis.
-* **doc/**: Documents, both in HTML (prefered version) and PDF (without embedded plots) with the findings and main conclusions of the study.
+* **doc/**: Document in HTML, due to embedded graphics, with the findings and main conclusions of the study.
 * **src/**: Code used in the project, in .Rmd format.
 
 ## References
 * [Employee Attrition Dataset](https://www.kaggle.com/patelprashant/employee-attrition#)
-* [The Ultimate Guide to Decision Trees for Machine Learning](https://www.keboola.com/blog/decision-trees-machine-learning)
-* [CART Model: Decision Tree Essentials](http://www.sthda.com/english/articles/35-statistical-machine-learning-essentials/141-cart-model-decision-tree-essentials/)
 * [R Graph Gallery](https://www.r-graph-gallery.com/)
+* [Ploty Graph Gallery](https://plotly.com/r/)
+* [Minería de Datos: Modelos y Algoritmos](https://www.editorialuoc.com/mineria-de-datos)
+* [A Handbook of Statistical Analyses Using R](https://cran.r-project.org/web/packages/HSAUR/vignettes/Ch_introduction_to_R.pdf)
+* [The Ultimate Guide to Decision Trees for Machine Learning](https://www.keboola.com/blog/decision-trees-machine-learning)

@@ -11,9 +11,6 @@ output:
     toc_depth: 2
     includes:
       in_header: header.html
-  pdf_document:
-    highlight: zenburn
-    toc: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -129,6 +126,14 @@ if(!require(plotly)){
 if(!require(caTools)){
     install.packages('caTools', dependencies=c("Depends", "Imports"), repos='http://cran.es.r-project.org')
     require(caTools)
+}
+if(!require(e1071)){
+    install.packages('e1071', dependencies=c("Depends", "Imports"), repos='http://cran.es.r-project.org')
+    require(e1071)
+}
+if(!require(randomForest)){
+    install.packages('randomForest', dependencies=c("Depends", "Imports"), repos='http://cran.es.r-project.org')
+    require(randomForest)
 }
 if(!require(caret)){
     install.packages('caret', dependencies=c("Depends", "Imports"), repos='http://cran.es.r-project.org')
@@ -283,7 +288,6 @@ We need to prepare our data specifically to perform our modelling as efficiently
 dataset_model <- dataset
 
 # Converting binary columns to INT
-dataset_model$Attrition <- ifelse(dataset_model$Attrition == 'Yes', 1, 0)
 dataset_model$Gender <- ifelse(dataset_model$Gender == 'Male', 1, 0)
 dataset_model$OverTime <- ifelse(dataset_model$OverTime == 'Yes', 1, 0)
 
@@ -332,7 +336,7 @@ test  = subset(dataset_model, sample == FALSE)
 
 # Modelling {.tabset}
 
-As we try to predict a categorical value with a binary output, we will focus our efforts in models specialized in this kind of task. From simpler to more complicated, we will perform a total of 5 different models:
+As we try to predict a categorical value with a binary output, we will focus our efforts in models specialized in this kind of task. From simpler to more complicated, we will perform a total of 4 different models:
 
 ## Logistic Regression
 
@@ -344,47 +348,17 @@ log_model <- glm(formula = Attrition~.,
 
 # Predicting the Test set results
 prob_pred = predict(log_model, type = 'response', newdata = test[-2])
-log_pred = ifelse(prob_pred > 0.33, 1, 0)
-
-# Getting the main indicators of our model
-summary(log_model)
-
-# Calculating the precision, the accuracy and the recall
-log_pre = mean(log_pred == test$Attrition)
-log_acc = log_cm[2, 2] / (log_cm[2,2] + log_cm[1,2]);
-log_rec = log_cm[2, 2] / (log_cm[2,2] + log_cm[2,1]);
-
-log_stats = rbind(precision = log_pre,
-                  accuracy = log_acc,
-                  recall = log_rec)
-log_stats
-
-```
-
-After our first iteration, we saw that there are many variables not relevant to our model, so we decide to drop them and construct a new model without taking them into consideration:
-
-```{r echo=TRUE, message=FALSE, warning=FALSE}
-# New data to be considered
-log_data <- NA;
-
-# Making of the model
-log_model <- glm(formula = Attrition~.,
-                 family = 'binomial',
-                 data = train)
-
-# Predicting the Test set results
-prob_pred = predict(log_model, type = 'response', newdata = test[-2])
-log_pred = ifelse(prob_pred > 0.33, 1, 0)
+log_pred = ifelse(prob_pred > 0.35, 1, 0)
 
 # Getting the main indicators of our model
 summary(log_model)
 
 # Making the Confusion Matrix
-log_cm = table(test[, 2], log_pred > 0.33)
+log_cm = table(test[, 2], log_pred > 0.35)
 log_cm
 
 # Calculating the precision, the accuracy and the recall
-log_pre = mean(log_pred == test$Attrition)
+log_pre = (log_cm[1,1] + log_cm[2,2]) / sum(log_cm)
 log_acc = log_cm[2, 2] / (log_cm[2,2] + log_cm[1,2]);
 log_rec = log_cm[2, 2] / (log_cm[2,2] + log_cm[2,1]);
 
@@ -393,37 +367,89 @@ log_stats = rbind(precision = log_pre,
                   recall = log_rec)
 log_stats
 
-# Calculating the AUC
-
-
 ```
 
-
-## Decision Trees - C50
+## Decision Trees
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
-#TODO
+# Making of the model
+tree_model <- C50::C5.0(train[,-2], train[,2], rules=FALSE)
+
+# Showing model stats
+summary(tree_model)
+
+# Predicting test data
+tree_pred <- predict(tree_model, newdata = test)
+
+# Making the Confusion Matrix
+tree_cm = table(test[, 2], tree_pred)
+tree_cm
+
+# Calculating the precision, the accuracy and the recall
+tree_pre = (tree_cm[1,1] + tree_cm[2,2]) / sum(tree_cm)
+tree_acc = tree_cm[2, 2] / (tree_cm[2,2] + tree_cm[1,2]);
+tree_rec = tree_cm[2, 2] / (tree_cm[2,2] + tree_cm[2,1]);
+
+tree_stats = rbind(precision = tree_pre,
+                   accuracy = tree_acc,
+                   recall = tree_rec)
+tree_stats
 
 ```
 
-## Decision Trees - CART
-
-```{r echo=TRUE, message=FALSE, warning=FALSE}
-#TODO
-
-```
 
 ## SVM Classifiers
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
-#TODO
+# Making of the model
+svm_model = svm(formula = Attrition ~ .,
+                data = train,
+                type = 'C-classification',
+                kernel = 'radial')
+
+# Predicting the Test set results
+svm_pred = predict(svm_model, newdata = test[-2])
+
+# Making the Confusion Matrix
+svm_cm = table(test[, 2], svm_pred)
+svm_cm
+
+# Calculating the precision, the accuracy and the recall
+svm_pre = (svm_cm[1,1] + svm_cm[2,2]) / sum(svm_cm)
+svm_acc = svm_cm[2, 2] / (svm_cm[2,2] + svm_cm[1,2]);
+svm_rec = svm_cm[2, 2] / (svm_cm[2,2] + svm_cm[2,1]);
+
+svm_stats = rbind(precision = svm_pre,
+                  accuracy = svm_acc,
+                  recall = svm_rec)
+svm_stats
 
 ```
 
 ## Random Forests
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
-#TODO
+# Making of the model
+rfor_model = randomForest(x = train[-2],
+                          y = train$Attrition,
+                          ntree = 500)
+
+# Predicting the Test set results
+rfor_pred = predict(rfor_model, newdata = test[-2])
+
+# Making the Confusion Matrix
+rfor_cm = table(test[, 2], rfor_pred)
+rfor_cm
+
+# Calculating the precision, the accuracy and the recall
+rfor_pre = (rfor_cm[1,1] + rfor_cm[2,2]) / sum(rfor_cm)
+rfor_acc = rfor_cm[2, 2] / (rfor_cm[2,2] + rfor_cm[1,2]);
+rfor_rec = rfor_cm[2, 2] / (rfor_cm[2,2] + rfor_cm[2,1]);
+
+rfor_stats = rbind(precision = rfor_pre,
+                   accuracy = rfor_acc,
+                   recall = rfor_rec)
+rfor_stats
 
 ```
 
@@ -432,5 +458,9 @@ log_stats
 
 # Bibliography
 
-
-
+* [Employee Attrition Dataset](https://www.kaggle.com/patelprashant/employee-attrition#)
+* [R Graph Gallery](https://www.r-graph-gallery.com/)
+* [Ploty Graph Gallery](https://plotly.com/r/)
+* [Minería de Datos: Modelos y Algoritmos](https://www.editorialuoc.com/mineria-de-datos)
+* [A Handbook of Statistical Analyses Using R](https://cran.r-project.org/web/packages/HSAUR/vignettes/Ch_introduction_to_R.pdf)
+* [The Ultimate Guide to Decision Trees for Machine Learning](https://www.keboola.com/blog/decision-trees-machine-learning)
