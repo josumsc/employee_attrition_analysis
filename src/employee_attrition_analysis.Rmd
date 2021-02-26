@@ -7,6 +7,7 @@ output:
     number_sections: yes
     theme: cosmo
     toc: yes
+    toc_float: true
     toc_depth: 2
     includes:
       in_header: header.html
@@ -199,7 +200,7 @@ We observe that the dataset is skewed to the left part of the histograms, which 
 On the other hand, there are more or less constant variables (such as `Rate`) and some that follow a normal distribution (as `Age`, which is normal in a various range of datasets).
 
 
-## Categorical Variables
+## Categorical Variables {.tabset}
 
 With the summary of the dataset on mind, we can now check the distribution of our target variable accross different factors. I selected three of them as interesting due to their importance in our quotidian lives:
 
@@ -220,9 +221,7 @@ grid.arrange(plotbyGender,plotbyOverTime,plotbyMaritalStatus,ncol=3)
 
 And, more generally, we will also check the value of the columns with a considerable number of factors to see if they are relevant enough to be considered in our modelling. The columns in this case are:
 
-1. EducationField
-2. JobRole
-
+### Education Field
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 qplot <- ggplot(dataset, aes(fill=EducationField, x=Attrition)) + 
@@ -231,6 +230,10 @@ qplot <- ggplot(dataset, aes(fill=EducationField, x=Attrition)) +
 ggplotly(qplot)
 ```
 
+We saw differences in proportion for **Marketing** and **Technical Degrees** as `EducationField`, as these fields are more representative in employees with attrition, and **Medical**, on the contrary as it is more represented on employeed not considering a career change. 
+
+### Job Role
+
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 qplot <- ggplot(dataset, aes(fill=JobRole, x=Attrition)) + 
   geom_bar(position="fill") + 
@@ -238,14 +241,13 @@ qplot <- ggplot(dataset, aes(fill=JobRole, x=Attrition)) +
 ggplotly(qplot)
 ```
 
-We saw differences in proportion for **Marketing** and **Technical Degrees** as `EducationField`, as these fields are more representative in employees with attrition, and **Medical**, on the contrary as it is more represented on employeed not considering a career change. 
-
 Regarding `JobRole`, **Sales Representative** and **Laboratory Technician** employees tend to be more attire for a change in their job posts, and on the contrary **Manager** and **Manufacturing Director** are more representative on the negative value of the target value.
 
-## Continuos Variables 
+## Continuos Variables {.tabset}
 
 And now would be the time to do the same, this time using a continuous variable. In this case, I have chosen `Age` as dimension to pivot by in order to get a clear idea of attrition through this variable.
 
+### Age
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 qplot <- ggplot(dataset, aes(x = Age)) +
             geom_density(binwidth = 10,
@@ -256,8 +258,9 @@ qplot <- ggplot(dataset, aes(x = Age)) +
 ggplotly(qplot)
 ```
 
-We observe that people inclined towards attrition has a distribution more inclined in younger ages, highlighting its mode on 30-31 years and much lower distributions for older people than 40. People not thinking about changing job posts tend to be older and with a much more distributed age, close to the normal distribution (though with a wider cue on older ages). On the other hand, as it seems obvious, we could check the density of `MonthlyIncome` differentiating by Attrition too:
+We observe that people inclined towards attrition has a distribution more inclined in younger ages, highlighting its mode on 30-31 years and much lower distributions for older people than 40. People not thinking about changing job posts tend to be older and with a much more distributed age, close to the normal distribution (though with a wider cue on older ages). 
 
+### MontlyIncome
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 qplot <- ggplot(dataset, aes(x = MonthlyIncome)) +
             geom_density(binwidth = 10,
@@ -268,7 +271,7 @@ qplot <- ggplot(dataset, aes(x = MonthlyIncome)) +
 ggplotly(qplot)
 ```
 
-And here we can check that density of salaries of workers thinking about quitting is much skewed towards lower salaries, with a very noticeable peak around \$2500 per month. Although people without attrition has also salaries concentrated around \$2500-6000, it is by far not as clear and corresponds to the natural distribution on Income in developed countries. 
+On the other hand, as it seems obvious, we could check the density of `MonthlyIncome` differentiating by Attrition too, and here we can check that density of salaries of workers thinking about quitting is much skewed towards lower salaries, with a very noticeable peak around \$2500 per month. Although people without attrition has also salaries concentrated around \$2500-6000, it is by far not as clear and corresponds to the natural distribution on Income in developed countries. 
 
 
 # Data Preparation
@@ -300,8 +303,8 @@ dv <- caret::dummyVars(" ~ BusinessTravel + Department + MaritalStatus", data = 
 new_columns <- data.frame(predict(dv, newdata = dataset_model))
 dataset_model <- cbind(dataset_model, new_columns)
 
-# Dropping categorical columns with categorical values
-dataset_model <- dataset_model[,c(-3, -5, -8,-14, -16)]
+# Dropping columns with categorical values
+dataset_model <- dataset_model[,c(-3, -5, -8,-14, -16, -38, -41, -44)]
 
 # Scaling numerical columns
 numerical_columns <- c('Age',
@@ -320,16 +323,78 @@ for (col in numerical_columns){
   dataset_model[, col] <- scale(dataset_model[, col])
 }
 
+# Splitting into training and test
+sample = sample.split(dataset_model$Attrition, SplitRatio = 2/3)
+train = subset(dataset_model, sample == TRUE)
+test  = subset(dataset_model, sample == FALSE)
+
 ```
 
-# Modelling
+# Modelling {.tabset}
 
 As we try to predict a categorical value with a binary output, we will focus our efforts in models specialized in this kind of task. From simpler to more complicated, we will perform a total of 5 different models:
 
 ## Logistic Regression
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
-#TODO
+# Making of the model
+log_model <- glm(formula = Attrition~.,
+                 family = 'binomial',
+                 data = train)
+
+# Predicting the Test set results
+prob_pred = predict(log_model, type = 'response', newdata = test[-2])
+log_pred = ifelse(prob_pred > 0.33, 1, 0)
+
+# Getting the main indicators of our model
+summary(log_model)
+
+# Calculating the precision, the accuracy and the recall
+log_pre = mean(log_pred == test$Attrition)
+log_acc = log_cm[2, 2] / (log_cm[2,2] + log_cm[1,2]);
+log_rec = log_cm[2, 2] / (log_cm[2,2] + log_cm[2,1]);
+
+log_stats = rbind(precision = log_pre,
+                  accuracy = log_acc,
+                  recall = log_rec)
+log_stats
+
+```
+
+After our first iteration, we saw that there are many variables not relevant to our model, so we decide to drop them and construct a new model without taking them into consideration:
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# New data to be considered
+log_data <- NA;
+
+# Making of the model
+log_model <- glm(formula = Attrition~.,
+                 family = 'binomial',
+                 data = train)
+
+# Predicting the Test set results
+prob_pred = predict(log_model, type = 'response', newdata = test[-2])
+log_pred = ifelse(prob_pred > 0.33, 1, 0)
+
+# Getting the main indicators of our model
+summary(log_model)
+
+# Making the Confusion Matrix
+log_cm = table(test[, 2], log_pred > 0.33)
+log_cm
+
+# Calculating the precision, the accuracy and the recall
+log_pre = mean(log_pred == test$Attrition)
+log_acc = log_cm[2, 2] / (log_cm[2,2] + log_cm[1,2]);
+log_rec = log_cm[2, 2] / (log_cm[2,2] + log_cm[2,1]);
+
+log_stats = rbind(precision = log_pre,
+                  accuracy = log_acc,
+                  recall = log_rec)
+log_stats
+
+# Calculating the AUC
+
 
 ```
 
