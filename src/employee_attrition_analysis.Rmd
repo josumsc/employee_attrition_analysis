@@ -334,7 +334,7 @@ test  = subset(dataset_model, sample == FALSE)
 
 ```
 
-# Modelling {.tabset}
+# Modeling {.tabset}
 
 As we try to predict a categorical value with a binary output, we will focus our efforts in models specialized in this kind of task. From simpler to more complicated, we will perform a total of 4 different models:
 
@@ -455,6 +455,25 @@ rfor_stats
 
 # Conclusions
 
+After our modeling was complete, we may think of the results in perspective. In a company environment, losing our talent maybe a step into the abyss, as we may lose some of our key players and thus that competitive advantage, and we may end up serving them to our competitors, which most probably would be catastrophic to our survival in the market. Besides, policies to reduce attrition are not as expensive as other kind of corporate investments are, and they are a perfect substitute for money invested in recruiters instead.
+
+With these two ideas in mind, it is clear that we may be favoriting a model that, given a good precision, also maintains an acceptable recall, as False Negatives are more dangerous than False Positives in this case (the money lost in retaining an employee who is already a supporter is not really lost, and compared with the money lost due to attrition is tiny). To decide our model, let's remember our scores:
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Combining them into a single matrix
+scores <- cbind(log_stats, 
+                tree_stats,
+                svm_stats, 
+                rfor_stats)
+colnames(scores) <- c("Logistic Regression",
+                      "Decision Trees",
+                      "SVM",
+                      "Random Forest")
+scores
+
+```
+
+So, our Logistic Regression, even tho considered the simpliest model, also provides us the best precision and recall, which are the two metrics we are looking to maximise. For that reason, we should use this model to predict new cases of Attrition in our hypothetic company.
 
 # Bibliography
 
