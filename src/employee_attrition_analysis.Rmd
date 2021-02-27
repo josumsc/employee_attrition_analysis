@@ -140,7 +140,6 @@ if(!require(caret)){
     require(caret)
 }
 
-
 # Indicates the seed to replicate results
 set.seed(1234)
 
@@ -359,10 +358,10 @@ log_cm
 
 # Calculating the precision, the accuracy and the recall
 log_pre = (log_cm[1,1] + log_cm[2,2]) / sum(log_cm)
-log_acc = log_cm[2, 2] / (log_cm[2,2] + log_cm[1,2]);
-log_rec = log_cm[2, 2] / (log_cm[2,2] + log_cm[2,1]);
+log_acc = log_cm[2,2] / (log_cm[2,2] + log_cm[1,2]);
+log_rec = log_cm[2,2] / (log_cm[2,2] + log_cm[2,1]);
 
-log_stats = rbind(precision = log_pre,
+log_stats = cbind(precision = log_pre,
                   accuracy = log_acc,
                   recall = log_rec)
 log_stats
@@ -390,7 +389,7 @@ tree_pre = (tree_cm[1,1] + tree_cm[2,2]) / sum(tree_cm)
 tree_acc = tree_cm[2, 2] / (tree_cm[2,2] + tree_cm[1,2]);
 tree_rec = tree_cm[2, 2] / (tree_cm[2,2] + tree_cm[2,1]);
 
-tree_stats = rbind(precision = tree_pre,
+tree_stats = cbind(precision = tree_pre,
                    accuracy = tree_acc,
                    recall = tree_rec)
 tree_stats
@@ -419,7 +418,7 @@ svm_pre = (svm_cm[1,1] + svm_cm[2,2]) / sum(svm_cm)
 svm_acc = svm_cm[2, 2] / (svm_cm[2,2] + svm_cm[1,2]);
 svm_rec = svm_cm[2, 2] / (svm_cm[2,2] + svm_cm[2,1]);
 
-svm_stats = rbind(precision = svm_pre,
+svm_stats = cbind(precision = svm_pre,
                   accuracy = svm_acc,
                   recall = svm_rec)
 svm_stats
@@ -446,7 +445,7 @@ rfor_pre = (rfor_cm[1,1] + rfor_cm[2,2]) / sum(rfor_cm)
 rfor_acc = rfor_cm[2, 2] / (rfor_cm[2,2] + rfor_cm[1,2]);
 rfor_rec = rfor_cm[2, 2] / (rfor_cm[2,2] + rfor_cm[2,1]);
 
-rfor_stats = rbind(precision = rfor_pre,
+rfor_stats = cbind(precision = rfor_pre,
                    accuracy = rfor_acc,
                    recall = rfor_rec)
 rfor_stats
@@ -460,16 +459,34 @@ After our modeling was complete, we may think of the results in perspective. In 
 With these two ideas in mind, it is clear that we may be favoriting a model that, given a good precision, also maintains an acceptable recall, as False Negatives are more dangerous than False Positives in this case (the money lost in retaining an employee who is already a supporter is not really lost, and compared with the money lost due to attrition is tiny). To decide our model, let's remember our scores:
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
-# Combining them into a single matrix
-scores <- cbind(log_stats, 
-                tree_stats,
-                svm_stats, 
-                rfor_stats)
-colnames(scores) <- c("Logistic Regression",
-                      "Decision Trees",
-                      "SVM",
-                      "Random Forest")
+# Combining them into a single data.frame
+scores <- as.data.frame(rbind(log_stats, 
+                        tree_stats,
+                        svm_stats, 
+                        rfor_stats))
+scores$model <- c("Logistic Regression",
+                  "Decision Trees",
+                  "SVM",
+                  "Random Forest")
+scores <- scores[,c(4,1,2,3)]
 scores
+
+# Plotting the results
+melted <- melt(scores[, c('model', 'precision', 'accuracy', 'recall')])
+q <- ggplot(data = melted, aes(x = model, y = value)) +
+  geom_bar(aes(fill = variable), stat = 'identity', position = 'dodge') +
+  xlab('Model') + 
+  ylab('Metric') +
+  ggtitle('Classification metrics per model')
+ggplotly(q)
+
+q <- ggplot(data = melted, aes(x = variable, y = value)) +
+  geom_boxplot() +
+  geom_jitter(aes(color = model)) + 
+  xlab('Metric') +
+  ylab('Value') +
+  ggtitle('Distribution of Metric per model')
+ggplotly(q)
 
 ```
 
